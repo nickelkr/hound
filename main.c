@@ -8,6 +8,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <arpa/inet.h>
+#include <string.h>
 
 typedef char err[PCAP_ERRBUF_SIZE];
 
@@ -82,7 +83,7 @@ void print_line(const u_char *payload, int len, int offset) {
 
 void print_payload(const u_char *payload, int size) {
     int rem = size;         // remaining number of bytes to print
-    int width = 16;         // print width
+    int width = 100;         // print width
     int len;                // keeping track of the print length
     int offset = 0;
     const u_char *ch = payload;
@@ -141,7 +142,15 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
     }
 
     // give out the src and dst
-    printf("    %s to %s", inet_ntoa(ip->ip_src), inet_ntoa(ip->ip_dst));
+    char *tmp = inet_ntoa(ip->ip_src);
+    char src[strlen(tmp) + 1];
+    strcpy(src, tmp);
+
+    tmp = inet_ntoa(ip->ip_dst);
+    char dst[strlen(tmp) + 1];
+    strcpy(dst, tmp);
+
+    printf("    %s to %s", src, dst);
 
     // check the protocol
     switch(ip->ip_p) {
@@ -168,7 +177,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
         return;
     }
 
-    printf("      From port: %d to port: %d\n", tcp->th_sport, tcp->th_dport);
+    printf("      From port: %d to port: %d\n", ntohs(tcp->th_sport), ntohs(tcp->th_dport));
 
     payload = (u_char *)(packet + SIZE_ETHERNET + size_ip + size_tcp);
     size_payload = ntohs(ip->ip_len) - (size_ip + size_tcp);
@@ -183,7 +192,7 @@ int main(int argc, char **argv) {
     char *device;                   // device name
     pcap_t *interface;              // capture handle
 
-    char filter[] = "ip";           // we want to filter everything but IP packets
+    char filter[] = "ip and dst port 443";           // we want to filter everything but IP packets
     struct bpf_program cf;          // compiled filter
     bpf_u_int32 mask;               // subnet mask
     bpf_u_int32 net;                // ip address
